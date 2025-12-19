@@ -42,6 +42,8 @@ npm install -g nodemon
 ```bash
 npm start
 ```
+<img width="945" height="409" alt="image" src="https://github.com/user-attachments/assets/3d94f544-f1c5-4820-a8bc-8e64599810bc" />
+
 
 ### Le microservice sera accessible à l’adresse suivante :
 ```bash
@@ -58,6 +60,7 @@ npm install swagger-ui-express swagger-jsdoc
 ```bash
 http://localhost:3000/api-docs
 ```
+<img width="1912" height="681" alt="image" src="https://github.com/user-attachments/assets/c09fba99-44ba-481f-957a-01ec1f77c004" />
 
 ### Swagger permet :
 
