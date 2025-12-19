@@ -61,6 +61,13 @@ npm install swagger-ui-express swagger-jsdoc
 http://localhost:3000/api-docs
 ```
 
+<img width="1912" height="681" alt="image" src="https://github.com/user-attachments/assets/c09fba99-44ba-481f-957a-01ec1f77c004" />
+
+### Swagger permet :
+
+La documentation complète de l’API.  
+Le test direct des endpoints (GET, POST, PUT, DELETE).  
+
 ## 📌 Description rapide
 
 - index.js : lance le serveur et charge les routes + Swagger
@@ -69,11 +76,3 @@ http://localhost:3000/api-docs
 - controllers/ : contient la logique des opérations CRUD
 - models/ : représente la structure des données
 - package.json : configuration et dépendances Node.js
-
-<img width="1912" height="681" alt="image" src="https://github.com/user-attachments/assets/c09fba99-44ba-481f-957a-01ec1f77c004" />
-
-### Swagger permet :
-
-La documentation complète de l’API.  
-Le test direct des endpoints (GET, POST, PUT, DELETE).  
-
