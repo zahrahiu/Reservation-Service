@@ -1,6 +1,18 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const controller = require('../controllers/reservationController');
+const controller = require("../controllers/reservationController");
+const authMiddleware = require("../middlewares/auth");
+const hasRole = require("../middlewares/hasRole");
+
+/**
+ * @swagger
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
 
 /**
  * @swagger
@@ -15,11 +27,13 @@ const controller = require('../controllers/reservationController');
  *   get:
  *     summary: Récupérer toutes les réservations
  *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Liste des réservations
  */
-router.get('/reservations', controller.getAll);
+router.get("/reservations", authMiddleware, controller.getAll);
 
 /**
  * @swagger
@@ -27,19 +41,10 @@ router.get('/reservations', controller.getAll);
  *   get:
  *     summary: Récupérer une réservation par ID
  *     tags: [Reservations]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Réservation trouvée
- *       404:
- *         description: Réservation non trouvée
+ *     security:
+ *       - bearerAuth: []
  */
-router.get('/reservations/:id', controller.getById);
+router.get("/reservations/:id", authMiddleware, controller.getById);
 
 /**
  * @swagger
@@ -47,24 +52,15 @@ router.get('/reservations/:id', controller.getById);
  *   post:
  *     summary: Créer une réservation
  *     tags: [Reservations]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               clientName:
- *                 type: string
- *               date:
- *                 type: string
- *               status:
- *                 type: string
- *     responses:
- *       201:
- *         description: Réservation créée
+ *     security:
+ *       - bearerAuth: []
  */
-router.post('/reservations', controller.create);
+router.post(
+    "/reservations",
+    authMiddleware,
+    hasRole("ADMIN"),
+    controller.create
+);
 
 /**
  * @swagger
@@ -72,17 +68,15 @@ router.post('/reservations', controller.create);
  *   put:
  *     summary: Mettre à jour une réservation
  *     tags: [Reservations]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Réservation mise à jour
+ *     security:
+ *       - bearerAuth: []
  */
-router.put('/reservations/:id', controller.update);
+router.put(
+    "/reservations/:id",
+    authMiddleware,
+    hasRole("ADMIN"),
+    controller.update
+);
 
 /**
  * @swagger
@@ -90,17 +84,15 @@ router.put('/reservations/:id', controller.update);
  *   delete:
  *     summary: Supprimer une réservation
  *     tags: [Reservations]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Réservation supprimée
+ *     security:
+ *       - bearerAuth: []
  */
-router.delete('/reservations/:id', controller.delete);
+router.delete(
+    "/reservations/:id",
+    authMiddleware,
+    hasRole("ADMIN"),
+    controller.delete
+);
 
 /**
  * @swagger
@@ -108,16 +100,13 @@ router.delete('/reservations/:id', controller.delete);
  *   put:
  *     summary: Annuler une réservation
  *     tags: [Reservations]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Réservation annulée
+ *     security:
+ *       - bearerAuth: []
  */
-router.put('/reservations/:id/annuler', controller.annuler);
+router.put(
+    "/reservations/:id/annuler",
+    authMiddleware,
+    controller.annuler
+);
 
 module.exports = router;

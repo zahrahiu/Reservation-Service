@@ -1,25 +1,36 @@
-const db = require('../db');
-const Reservation = require('../models/reservationModel');
+const db = require("../db");
+const Reservation = require("../models/reservationModel");
 
-// GET ALL
+/**
+ * GET ALL RESERVATIONS
+ */
 exports.getAll = (req, res) => {
-    db.query('SELECT * FROM reservations', (err, results) => {
+    db.query("SELECT * FROM reservations", (err, results) => {
         if (err) return res.status(500).json(err);
-        res.json(results);
+
+        res.json({
+            requestedBy: req.user.email,
+            roles: req.user.roles,
+            reservations: results
+        });
     });
 };
 
-// GET BY ID
+/**
+ * GET RESERVATION BY ID
+ */
 exports.getById = (req, res) => {
     const { id } = req.params;
 
     db.query(
-        'SELECT * FROM reservations WHERE idReservation = ?',
+        "SELECT * FROM reservations WHERE idReservation = ?",
         [id],
         (err, results) => {
             if (err) return res.status(500).json(err);
-            if (results.length === 0)
-                return res.status(404).json({ message: 'Reservation not found' });
+
+            if (results.length === 0) {
+                return res.status(404).json({ message: "Reservation not found" });
+            }
 
             const reservation = new Reservation(results[0]);
             reservation.totalPrix = totalPrix(reservation);
@@ -29,10 +40,13 @@ exports.getById = (req, res) => {
     );
 };
 
-// CREATE
+/**
+ * CREATE RESERVATION
+ */
 exports.create = (req, res) => {
-    if (!verifierConditions(req.body))
-        return res.status(400).json({ message: 'Reservation invalide' });
+    if (!verifierConditions(req.body)) {
+        return res.status(400).json({ message: "Reservation invalide" });
+    }
 
     const {
         client_id,
@@ -46,9 +60,9 @@ exports.create = (req, res) => {
     } = req.body;
 
     db.query(
-        `INSERT INTO reservations 
-        (client_id, chambre_id, dateDebut, dateFin, statut, nombrePersonnes, typeChambre, photoActeMariage)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO reservations
+         (client_id, chambre_id, dateDebut, dateFin, statut, nombrePersonnes, typeChambre, photoActeMariage)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             client_id,
             chambre_id,
@@ -69,23 +83,26 @@ exports.create = (req, res) => {
 
             reservation.totalPrix = totalPrix(reservation);
 
-            res.json({
-                message: 'Reservation created',
+            res.status(201).json({
+                message: "Reservation created",
+                createdBy: req.user.email, // JWT
                 reservation
             });
         }
     );
 };
 
-// UPDATE
+/**
+ * UPDATE RESERVATION
+ */
 exports.update = (req, res) => {
     const { id } = req.params;
 
     db.query(
         `UPDATE reservations SET
-        client_id=?, chambre_id=?, dateDebut=?, dateFin=?, statut=?, 
-        nombrePersonnes=?, typeChambre=?, photoActeMariage=?
-        WHERE idReservation=?`,
+                                 client_id=?, chambre_id=?, dateDebut=?, dateFin=?, statut=?,
+                                 nombrePersonnes=?, typeChambre=?, photoActeMariage=?
+         WHERE idReservation=?`,
         [
             req.body.client_id,
             req.body.chambre_id,
@@ -99,45 +116,64 @@ exports.update = (req, res) => {
         ],
         err => {
             if (err) return res.status(500).json(err);
-            res.json({ message: 'Reservation updated' });
+
+            res.json({
+                message: "Reservation updated",
+                updatedBy: req.user.email
+            });
         }
     );
 };
 
-// DELETE
+/**
+ * DELETE RESERVATION
+ */
 exports.delete = (req, res) => {
     const { id } = req.params;
 
     db.query(
-        'DELETE FROM reservations WHERE idReservation=?',
+        "DELETE FROM reservations WHERE idReservation=?",
         [id],
         err => {
             if (err) return res.status(500).json(err);
-            res.json({ message: 'Reservation deleted' });
+
+            res.json({
+                message: "Reservation deleted",
+                deletedBy: req.user.email
+            });
         }
     );
 };
 
-// ANNULER
+/**
+ * ANNULER RESERVATION
+ */
 exports.annuler = (req, res) => {
     const { id } = req.params;
 
     db.query(
-        'UPDATE reservations SET statut=? WHERE idReservation=?',
-        ['annulée', id],
+        "UPDATE reservations SET statut=? WHERE idReservation=?",
+        ["annulée", id],
         err => {
             if (err) return res.status(500).json(err);
-            res.json({ message: 'Reservation annulée' });
+
+            res.json({
+                message: "Reservation annulée",
+                annulledBy: req.user.email
+            });
         }
     );
 };
 
-// ===== LOGIQUE METIER =====
+/**
+ * LOGIQUE METIER
+ */
+
 function totalPrix(reservation) {
     let prix = 200;
-    if (reservation.typeChambre === 'Suite') prix = 500;
-    if (reservation.typeChambre === 'Deluxe') prix = 400;
-    if (reservation.typeChambre === 'Standard') prix = 300;
+    if (reservation.typeChambre === "Suite") prix = 500;
+    if (reservation.typeChambre === "Deluxe") prix = 400;
+    if (reservation.typeChambre === "Standard") prix = 300;
 
     const debut = new Date(reservation.dateDebut);
     const fin = new Date(reservation.dateFin);
