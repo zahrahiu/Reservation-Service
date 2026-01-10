@@ -40,6 +40,9 @@ npm install -g nodemon
 ### axios == OpenFeign
 ```bash
 npm install axios
+## Installer les packages supplémentaires nécessaires pour JWT et sécurité
+```bash
+Installer les packages supplémentaires nécessaires pour JWT et sécurité
 ```
 ## 4️⃣ Lancement de l’application
 ```bash
