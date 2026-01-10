@@ -37,7 +37,10 @@ npm install -g nodemon
 ```
 
 ### Nodemon permet de redémarrer automatiquement le serveur lors des modifications du code.
-
+### axios == OpenFeign
+```bash
+npm install axios
+```
 ## 4️⃣ Lancement de l’application
 ```bash
 npm start

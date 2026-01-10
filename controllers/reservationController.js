@@ -1,5 +1,6 @@
 const db = require("../db");
 const Reservation = require("../models/reservationModel");
+const axios = require("axios");
 
 /**
  * GET ALL RESERVATIONS
@@ -19,13 +20,13 @@ exports.getAll = (req, res) => {
 /**
  * GET RESERVATION BY ID
  */
-exports.getById = (req, res) => {
+exports.getById = async (req, res) => {
     const { id } = req.params;
 
     db.query(
         "SELECT * FROM reservations WHERE idReservation = ?",
         [id],
-        (err, results) => {
+        async (err, results) => {
             if (err) return res.status(500).json(err);
 
             if (results.length === 0) {
@@ -33,6 +34,39 @@ exports.getById = (req, res) => {
             }
 
             const reservation = new Reservation(results[0]);
+
+            try {
+                // 🏨 Chambre (Flask)
+                const chambreResponse = await axios.get(
+                    `http://localhost:8088/chambres/${reservation.chambre_id}`,
+                    {
+                        headers: {
+                            Authorization: req.headers.authorization
+                        }
+                    }
+                );
+
+                reservation.chambre = chambreResponse.data;
+
+                // 👤 Client lié à la réservation (Auth / Client Service)
+                const clientResponse = await axios.get(
+                    `http://localhost:8089/clients/${reservation.client_id}`,
+                    {
+                        headers: {
+                            Authorization: req.headers.authorization
+                        }
+                    }
+                );
+
+                reservation.client = clientResponse.data;
+
+            } catch (error) {
+                return res.status(500).json({
+                    message: "Erreur lors de l’agrégation des données",
+                    error: error.message
+                });
+            }
+
             reservation.totalPrix = totalPrix(reservation);
 
             res.json(reservation);
@@ -40,9 +74,11 @@ exports.getById = (req, res) => {
     );
 };
 
+
+
 /**
  * CREATE RESERVATION
- */
+
 exports.create = (req, res) => {
     if (!verifierConditions(req.body)) {
         return res.status(400).json({ message: "Reservation invalide" });
@@ -90,6 +126,95 @@ exports.create = (req, res) => {
             });
         }
     );
+};
+ */
+exports.create = async (req, res) => {
+    try {
+        // 1️⃣ Vérifier la validité de la réservation
+        if (!verifierConditions(req.body)) {
+            return res.status(400).json({ message: "Reservation invalide" });
+        }
+
+        const user = req.user; // JWT
+        let clientId;
+
+        // 2️⃣ Déterminer qui crée la réservation
+        if (user.roles.includes("CLIENT")) {
+            // Client normal → prend son propre id
+            clientId = user.userId;
+        } else if (user.roles.includes("ADMIN")) {
+            // Manager → doit fournir client_id dans body
+            if (!req.body.client_id) {
+                return res.status(400).json({ message: "Manager doit fournir client_id" });
+            }
+            clientId = req.body.client_id;
+
+            // ⚠️ Vérifier que le client existe dans ClientService
+            try {
+                const clientResponse = await axios.get(
+                    `http://localhost:8089/clients/${clientId}`,
+                    { headers: { Authorization: req.headers.authorization } }
+                );
+            } catch (error) {
+                return res.status(404).json({ message: "Client non trouvé" });
+            }
+        } else {
+            return res.status(403).json({ message: "Rôle non autorisé pour créer réservation" });
+        }
+
+        // 3️⃣ Extraire les autres champs
+        const {
+            chambre_id,
+            dateDebut,
+            dateFin,
+            statut,
+            nombrePersonnes,
+            typeChambre,
+            photoActeMariage
+        } = req.body;
+
+        // 4️⃣ Créer réservation dans DB
+        db.query(
+            `INSERT INTO reservations
+             (client_id, chambre_id, dateDebut, dateFin, statut, nombrePersonnes, typeChambre, photoActeMariage)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                clientId,
+                chambre_id,
+                dateDebut,
+                dateFin,
+                statut,
+                nombrePersonnes,
+                typeChambre,
+                photoActeMariage
+            ],
+            (err, result) => {
+                if (err) return res.status(500).json(err);
+
+                const reservation = new Reservation({
+                    idReservation: result.insertId,
+                    client_id: clientId,
+                    chambre_id,
+                    dateDebut,
+                    dateFin,
+                    statut,
+                    nombrePersonnes,
+                    typeChambre,
+                    photoActeMariage
+                });
+
+                reservation.totalPrix = totalPrix(reservation);
+
+                res.status(201).json({
+                    message: "Reservation created",
+                    createdBy: user.email,
+                    reservation
+                });
+            }
+        );
+    } catch (error) {
+        res.status(500).json({ message: "Erreur interne", error: error.message });
+    }
 };
 
 /**
