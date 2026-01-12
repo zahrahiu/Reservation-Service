@@ -38,7 +38,7 @@ exports.getById = async (req, res) => {
             try {
                 // 🏨 Chambre (Flask)
                 const chambreResponse = await axios.get(
-                    `http://localhost:8088/chambres/${reservation.chambre_id}`,
+                    `http://localhost:8093/rooms/${reservation.chambre_id}`,
                     {
                         headers: {
                             Authorization: req.headers.authorization
@@ -50,7 +50,7 @@ exports.getById = async (req, res) => {
 
                 // 👤 Client lié à la réservation (Auth / Client Service)
                 const clientResponse = await axios.get(
-                    `http://localhost:8089/clients/${reservation.client_id}`,
+                    `http://localhost:8088/clients/${reservation.client_id}`,
                     {
                         headers: {
                             Authorization: req.headers.authorization
