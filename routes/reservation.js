@@ -58,9 +58,9 @@ router.get("/reservations/:id", authMiddleware, controller.getById);
 router.post(
     "/reservations",
     authMiddleware,
-    /**  hasRole("ADMIN"), */
     controller.create
 );
+
 
 /**
  * @swagger

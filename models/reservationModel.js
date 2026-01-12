@@ -8,7 +8,8 @@ class Reservation {
                     statut,
                     nombrePersonnes,
                     typeChambre,
-                    photoActeMariage
+                    photoActeMariage,
+                    totalPrix
                 }) {
         this.idReservation = idReservation;
         this.client_id = client_id;
@@ -19,6 +20,7 @@ class Reservation {
         this.nombrePersonnes = nombrePersonnes;
         this.typeChambre = typeChambre;
         this.photoActeMariage = photoActeMariage;
+        this.totalPrix = totalPrix;
     }
 }
 

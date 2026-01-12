@@ -130,92 +130,74 @@ exports.create = (req, res) => {
  */
 exports.create = async (req, res) => {
     try {
-        // 1️⃣ Vérifier la validité de la réservation
         if (!verifierConditions(req.body)) {
             return res.status(400).json({ message: "Reservation invalide" });
         }
 
-        const user = req.user; // JWT
-        let clientId;
+        const user = req.user;
+        let clientId = user.userId;
+        let statut = "pending";
 
-        // 2️⃣ Déterminer qui crée la réservation
-        if (user.roles.includes("CLIENT")) {
-            // Client normal → prend son propre id
-            clientId = user.userId;
-        } else if (user.roles.includes("ADMIN")) {
-            // Manager → doit fournir client_id dans body
-            if (!req.body.client_id) {
-                return res.status(400).json({ message: "Manager doit fournir client_id" });
-            }
+        if (user.roles.includes("ADMIN")) {
+            if (!req.body.client_id)
+                return res.status(400).json({ message: "Admin doit fournir client_id" });
             clientId = req.body.client_id;
-
-            // ⚠️ Vérifier que le client existe dans ClientService
-            try {
-                const clientResponse = await axios.get(
-                    `http://localhost:8089/clients/${clientId}`,
-                    { headers: { Authorization: req.headers.authorization } }
-                );
-            } catch (error) {
-                return res.status(404).json({ message: "Client non trouvé" });
-            }
-        } else {
-            return res.status(403).json({ message: "Rôle non autorisé pour créer réservation" });
+            statut = req.body.statut || "pending";
         }
 
-        // 3️⃣ Extraire les autres champs
-        const {
+        const { chambre_id, dateDebut, dateFin, nombrePersonnes, photoActeMariage } = req.body;
+
+        const debut = new Date(dateDebut);
+        const fin = new Date(dateFin);
+
+        // 🏨 Get room info
+        const roomResponse = await axios.get(`http://localhost:8093/rooms/${chambre_id}`, {
+            headers: { Authorization: req.headers.authorization }
+        });
+
+        const room = roomResponse.data;
+
+        if (!room || !room.prix || !room.type) {
+            return res.status(400).json({ message: "Chambre introuvable ou données manquantes" });
+        }
+
+        // 📝 Calculate totalPrix
+        const nuits = (fin - debut) / (1000 * 60 * 60 * 24);
+        const totalPrix = nuits * room.prix ;
+
+        // 💾 Insert reservation (typeChambre from room)
+        const [result] = await db.promise().query(
+            `INSERT INTO reservations
+             (client_id, chambre_id, dateDebut, dateFin, statut, nombrePersonnes, typeChambre, photoActeMariage, totalPrix)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [clientId, chambre_id, debut, fin, statut, nombrePersonnes, room.type, photoActeMariage, totalPrix]
+        );
+
+        const reservation = new Reservation({
+            idReservation: result.insertId,
+            client_id: clientId,
             chambre_id,
-            dateDebut,
-            dateFin,
+            dateDebut: debut,
+            dateFin: fin,
             statut,
             nombrePersonnes,
-            typeChambre,
-            photoActeMariage
-        } = req.body;
+            typeChambre: room.type,
+            photoActeMariage,
+            totalPrix
+        });
 
-        // 4️⃣ Créer réservation dans DB
-        db.query(
-            `INSERT INTO reservations
-             (client_id, chambre_id, dateDebut, dateFin, statut, nombrePersonnes, typeChambre, photoActeMariage)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                clientId,
-                chambre_id,
-                dateDebut,
-                dateFin,
-                statut,
-                nombrePersonnes,
-                typeChambre,
-                photoActeMariage
-            ],
-            (err, result) => {
-                if (err) return res.status(500).json(err);
+        res.status(201).json({
+            message: "Reservation created",
+            createdBy: user.email,
+            reservation
+        });
 
-                const reservation = new Reservation({
-                    idReservation: result.insertId,
-                    client_id: clientId,
-                    chambre_id,
-                    dateDebut,
-                    dateFin,
-                    statut,
-                    nombrePersonnes,
-                    typeChambre,
-                    photoActeMariage
-                });
-
-                reservation.totalPrix = totalPrix(reservation);
-
-                res.status(201).json({
-                    message: "Reservation created",
-                    createdBy: user.email,
-                    reservation
-                });
-            }
-        );
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: "Erreur interne", error: error.message });
     }
 };
+
 
 /**
  * UPDATE RESERVATION

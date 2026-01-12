@@ -3,9 +3,17 @@ const bodyParser = require('body-parser');
 const reservationRoutes = require('./routes/reservation');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
+const cors = require('cors'); // <-- import cors
 
 const app = express();
 app.use(bodyParser.json());
+
+// ✅ CORS
+app.use(cors({
+    origin: 'http://localhost:4200', // <-- Angular frontend
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Swagger
 const options = {
