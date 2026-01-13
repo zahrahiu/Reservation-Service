@@ -82,3 +82,8 @@ Le test direct des endpoints (GET, POST, PUT, DELETE).
 - controllers/ : contient la logique des opérations CRUD
 - models/ : représente la structure des données
 - package.json : configuration et dépendances Node.js
+
+  ## lancement de server
+  ```bash
+  nodemon index.js   
+  ```
