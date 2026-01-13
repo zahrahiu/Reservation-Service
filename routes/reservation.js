@@ -37,6 +37,17 @@ router.get("/reservations", authMiddleware, controller.getAll);
 
 /**
  * @swagger
+ * /api/reservations/client:
+ *   get:
+ *     summary: Récupérer toutes les réservations du client connecté
+ *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get("/reservations/client", authMiddleware, hasRole("CLIENT"), controller.getByClient);
+
+/**
+ * @swagger
  * /api/reservations/{id}:
  *   get:
  *     summary: Récupérer une réservation par ID
@@ -44,7 +55,7 @@ router.get("/reservations", authMiddleware, controller.getAll);
  *     security:
  *       - bearerAuth: []
  */
-router.get("/reservations/:id", authMiddleware, controller.getById);
+router.get("/reservations/id/:id", authMiddleware, controller.getById);
 
 /**
  * @swagger

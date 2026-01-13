@@ -339,6 +339,50 @@ exports.annuler = (req, res) => {
 };
 
 /**
+ * GET RESERVATIONS BY CLIENT
+ */
+exports.getByClient = async (req, res) => {
+    try {
+        console.log("User from JWT:", req.user); // check userId w roles
+        const clientId = parseInt(req.user.userId);
+        console.log("Client ID from JWT:", clientId);
+
+        const [rows] = await db.promise().query(
+            "SELECT idReservation, chambre_id, client_id, dateDebut, dateFin, statut, totalPrix FROM reservations WHERE client_id = ? ORDER BY dateDebut DESC",
+            [clientId]
+        );
+        console.log("Rows fetched from DB:", rows);
+
+        if (rows.length === 0) {
+            return res.status(200).json({ message: "Aucune réservation trouvée", reservations: [] });
+        }
+
+        const reservations = await Promise.all(rows.map(async r => {
+            let chambre = {};
+            let client = {};
+
+            try {
+                const chambreRes = await axios.get(`http://localhost:8093/rooms/${r.chambre_id}`, {
+                    headers: { Authorization: req.headers.authorization }
+                });
+                chambre = chambreRes.data;
+            } catch (err) {
+                console.warn("Erreur chambre:", err.message);
+            }
+            return { ...r, chambre };
+        }));
+
+        res.json({ clientId, reservations });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Erreur interne", error: error.message });
+    }
+};
+
+
+
+/**
  * LOGIQUE METIER
  */
 
@@ -364,3 +408,4 @@ function verifierConditions(reservation) {
 
     return true;
 }
+
