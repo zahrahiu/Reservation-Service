@@ -5,17 +5,53 @@ const axios = require("axios");
 /**
  * GET ALL RESERVATIONS
  */
-exports.getAll = (req, res) => {
-    db.query("SELECT * FROM reservations", (err, results) => {
+exports.getAll = async (req, res) => {
+    db.query("SELECT * FROM reservations", async (err, results) => {
         if (err) return res.status(500).json(err);
 
-        res.json({
-            requestedBy: req.user.email,
-            roles: req.user.roles,
-            reservations: results
-        });
+        try {
+            const reservations = await Promise.all(results.map(async r => {
+                // 🏨 get room
+                let chambre = {};
+                try {
+                    const chambreRes = await axios.get(`http://localhost:8093/rooms/${r.chambre_id}`, {
+                        headers: { Authorization: req.headers.authorization }
+                    });
+                    chambre = chambreRes.data;
+                } catch (err) {
+                    console.warn("Room service error:", err.message);
+                }
+
+                // 👤 get client
+                let client = {};
+                try {
+                    const clientRes = await axios.get(`http://localhost:8088/clients/${r.client_id}`, {
+                        headers: { Authorization: req.headers.authorization }
+                    });
+                    client = clientRes.data;
+                } catch (err) {
+                    console.warn("Client service error:", err.message);
+                }
+
+                return {
+                    ...r,
+                    client,
+                    chambre,
+                };
+            }));
+
+            res.json({
+                requestedBy: req.user?.email,
+                roles: req.user?.roles,
+                reservations
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Erreur fetching reservations", error: error.message });
+        }
     });
 };
+
 
 /**
  * GET RESERVATION BY ID
@@ -202,34 +238,64 @@ exports.create = async (req, res) => {
 /**
  * UPDATE RESERVATION
  */
-exports.update = (req, res) => {
+
+
+exports.update = async (req, res) => {
     const { id } = req.params;
 
-    db.query(
-        `UPDATE reservations SET
-                                 client_id=?, chambre_id=?, dateDebut=?, dateFin=?, statut=?,
-                                 nombrePersonnes=?, typeChambre=?, photoActeMariage=?
-         WHERE idReservation=?`,
-        [
-            req.body.client_id,
-            req.body.chambre_id,
-            req.body.dateDebut,
-            req.body.dateFin,
-            req.body.statut,
-            req.body.nombrePersonnes,
-            req.body.typeChambre,
-            req.body.photoActeMariage,
-            id
-        ],
-        err => {
-            if (err) return res.status(500).json(err);
+    try {
+        // 1️⃣ Get existing reservation
+        const [rows] = await db.promise().query(
+            "SELECT * FROM reservations WHERE idReservation=?",
+            [id]
+        );
 
-            res.json({
-                message: "Reservation updated",
-                updatedBy: req.user.email
-            });
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Reservation not found" });
         }
-    );
+
+        const reservation = rows[0];
+
+        // 2️⃣ Prepare updated data (partial update)
+        const updatedData = {
+            client_id: req.body.client_id !== undefined ? req.body.client_id : reservation.client_id,
+            chambre_id: req.body.chambre_id !== undefined ? req.body.chambre_id : reservation.chambre_id,
+            dateDebut: req.body.dateDebut !== undefined ? req.body.dateDebut : reservation.dateDebut,
+            dateFin: req.body.dateFin !== undefined ? req.body.dateFin : reservation.dateFin,
+            statut: req.body.statut !== undefined ? req.body.statut : reservation.statut,
+            nombrePersonnes: req.body.nombrePersonnes !== undefined ? req.body.nombrePersonnes : reservation.nombrePersonnes,
+            typeChambre: req.body.typeChambre !== undefined ? req.body.typeChambre : reservation.typeChambre,
+            photoActeMariage: req.body.photoActeMariage !== undefined ? req.body.photoActeMariage : reservation.photoActeMariage
+        };
+
+        // 3️⃣ Update DB
+        await db.promise().query(
+            `UPDATE reservations SET
+                client_id=?, chambre_id=?, dateDebut=?, dateFin=?, statut=?,
+                nombrePersonnes=?, typeChambre=?, photoActeMariage=?
+             WHERE idReservation=?`,
+            [
+                updatedData.client_id,
+                updatedData.chambre_id,
+                updatedData.dateDebut,
+                updatedData.dateFin,
+                updatedData.statut,
+                updatedData.nombrePersonnes,
+                updatedData.typeChambre,
+                updatedData.photoActeMariage,
+                id
+            ]
+        );
+
+        res.json({
+            message: "Reservation updated",
+            updatedBy: req.user.email,
+            reservation: updatedData
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Erreur lors de la mise à jour", error: err.message });
+    }
 };
 
 /**

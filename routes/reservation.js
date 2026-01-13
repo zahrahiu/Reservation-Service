@@ -58,6 +58,7 @@ router.get("/reservations/:id", authMiddleware, controller.getById);
 router.post(
     "/reservations",
     authMiddleware,
+    hasRole("CLIENT"),
     controller.create
 );
 
@@ -74,7 +75,7 @@ router.post(
 router.put(
     "/reservations/:id",
     authMiddleware,
-    hasRole("CLIENT"),
+    hasRole("RECEPTIONNISTE"),
     controller.update
 );
 
@@ -90,7 +91,7 @@ router.put(
 router.delete(
     "/reservations/:id",
     authMiddleware,
-    hasRole("CLIENT"),
+    hasRole("CLIENT", "RECEPTIONNISTE"),
     controller.delete
 );
 
